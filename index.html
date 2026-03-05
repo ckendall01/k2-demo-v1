@@ -657,30 +657,80 @@ async function callClaude(payload) {
   async function analyzeDocument() {
     const fileInput = document.getElementById('fileInput');
     const context = document.getElementById('uploadContext').value.trim();
-    if (!fileInput.files.length && !context) return alert('Please upload a file or add context.');
-
+    
+    // 🚨 BUG 1 & 2 FIX: Initialize and properly extract text
+    let fullText = ''; 
+    
     if (fileInput.files.length) {
-        const fileText = await fileInput.files[0].text();
-        userMessage = `Analyze this document: "${fileText}". Context: ${context}`;
+      const file = fileInput.files[0];
+      if (file.type === 'application/pdf') {
+        fullText = await extractTextFromPDF(file);
+      } else {
+        fullText = await file.text();
       }
+    }
+
+    if (!fullText && !context) {
+      alert("Please upload a document or provide context.");
+      return;
+    }
 
     const btn = document.getElementById('uploadBtn');
     setLoading(btn, true);
 
-    try {
-      let userMessage = "";
-      if (fileInput.files.length) {
-        const fileText = await fileInput.files[0].text();
-        userMessage = `Analyze this document: "${fileText}". Context: ${context}`;
-      } else {
-        userMessage = `Context: ${context}. What Virginia franchise law protections apply?`;
+    // 1. DYNAMIC KEYWORDS: Query + Core Legal Terms
+    const userTerms = context.toLowerCase().split(/\s+/).filter(word => word.length > 3);
+    const coreTerms = ["warranty", "labor", "audit", "reimbursement", "parts", "markup", "compliance"];
+    const keywords = [...new Set([...userTerms, ...coreTerms])];
+
+    // 2. COLLECT ALL MATCHES FIRST
+    let matches = [];
+    const textLower = fullText.toLowerCase(); // Now safely initialized
+
+    keywords.forEach(word => {
+      let index = textLower.indexOf(word);
+      while (index !== -1) {
+        matches.push(index);
+        index = textLower.indexOf(word, index + 1); 
       }
-      
-      const payload = { type: 'initial', messages: [{ role: "user", content: userMessage }] };
+    });
+
+    // ... rest of the sorting and snippet logic remains the same ...
+
+    // 3. SORT AND DEDUPLICATE SNIPPETS
+    matches.sort((a, b) => a - b);
+
+    let relevantSnippets = [];
+    let lastEndIndex = -1;
+
+    for (const pos of matches) {
+      if (relevantSnippets.length >= 40) break; 
+
+      const start = Math.max(0, pos - 1000);
+      const end = Math.min(fullText.length, pos + 2000);
+
+      if (start > lastEndIndex) {
+        relevantSnippets.push(fullText.substring(start, end));
+        lastEndIndex = end;
+      }
+    }
+
+    const targetedText = relevantSnippets.join("\n\n[...]\n\n");
+
+    try {
+      // 4. EXECUTE USING YOUR EXISTING callClaude()
+      const payload = {
+        messages: [
+          { role: 'user', content: `USER QUESTION: ${context}\n\nRELEVANT DOCUMENT SECTIONS:\n${targetedText}` }
+        ]
+      };
+
       const result = await callClaude(payload);
       showResponse(result);
+
     } catch (err) {
-      showResponse('Error: ' + err.message);
+      console.error("Analysis failed:", err);
+      alert("Analysis failed. Check console for details.");
     } finally {
       setLoading(btn, false);
     }
