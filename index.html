@@ -720,11 +720,11 @@ async function callClaude(payload) {
     try {
       // 4. EXECUTE USING YOUR EXISTING callClaude()
       const payload = {
-  type: 'phase2',          
-  messages: [
-    { role: 'user', content: `USER QUESTION: ${context}\n\nRELEVANT DOCUMENT SECTIONS:\n${targetedText}` }
-  ]
-};
+        // REMOVED type: 'phase2' - Let it default to Phase 1
+        messages: [
+          { role: 'user', content: `USER QUESTION: ${context}\n\nRELEVANT DOCUMENT SECTIONS:\n${targetedText}` }
+        ]
+      };
 
       const result = await callClaude(payload);
       showResponse(result);
