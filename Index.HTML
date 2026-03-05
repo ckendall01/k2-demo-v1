@@ -1,0 +1,858 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Virginia Dealer Advisor</title>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+<script>pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';</script>
+<link href="https://fonts.googleapis.com/css2?family=Raleway:wght@400;600;700&family=Open+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy: #2a508e;
+    --navy-light: #30589c;
+    --gold: #f4a700;
+    --gold-light: #f9c340;
+    --gold-pale: #fef6e0;
+    --cream: #faf7f2;
+    --white: #ffffff;
+    --gray-light: #f0ede8;
+    --gray-mid: #c8c0b4;
+    --gray-text: #6b6358;
+    --red-alert: #c0392b;
+    --green-ok: #1a6b45;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Open Sans', sans-serif;
+    color: var(--navy);
+    background: transparent;
+  }
+
+  .tool-panel {
+    background: var(--white);
+    border: 1px solid rgba(244,167,0,0.3);
+    border-radius: 12px;
+    box-shadow: 0 2px 16px rgba(42,80,142,0.08);
+    overflow: hidden;
+  }
+
+  .panel-tabs {
+    display: flex;
+    background: var(--gray-light);
+    border-bottom: 2px solid var(--gray-mid);
+  }
+
+  .tab-btn {
+    flex: 1;
+    padding: 14px 20px;
+    font-family: 'Open Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--gray-text);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .tab-btn.active {
+    background: var(--white);
+    color: var(--navy);
+    border-bottom: 3px solid var(--gold);
+    margin-bottom: -2px;
+  }
+
+  .tab-btn:hover:not(.active) {
+    background: rgba(255,255,255,0.6);
+    color: var(--navy);
+  }
+
+  .tab-content {
+    display: none;
+    padding: 28px;
+  }
+
+  .tab-content.active { display: block; }
+
+  .upload-zone {
+    border: 2px dashed var(--gray-mid);
+    border-radius: 10px;
+    padding: 40px 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: var(--cream);
+    position: relative;
+  }
+
+  .upload-zone:hover, .upload-zone.drag-over {
+    border-color: var(--gold);
+    background: var(--gold-pale);
+  }
+
+  .upload-zone input[type="file"] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+    width: 100%;
+    height: 100%;
+  }
+
+  .upload-icon { font-size: 36px; margin-bottom: 12px; display: block; }
+
+  .upload-title {
+    font-family: 'Raleway', sans-serif;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--navy);
+    margin-bottom: 6px;
+  }
+
+  .upload-sub { font-size: 13px; color: var(--gray-text); line-height: 1.6; }
+
+  .file-types {
+    margin-top: 12px;
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .file-tag {
+    background: var(--navy);
+    color: var(--gold-light);
+    font-size: 10px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 4px;
+    letter-spacing: 0.06em;
+  }
+
+  .file-selected {
+    display: none;
+    align-items: center;
+    gap: 12px;
+    background: var(--gold-pale);
+    border: 1px solid var(--gold);
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-top: 16px;
+  }
+
+  .file-selected.show { display: flex; }
+
+  .file-selected-name {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--navy);
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .remove-file {
+    background: none;
+    border: none;
+    color: var(--gray-text);
+    cursor: pointer;
+    font-size: 16px;
+    padding: 0;
+    line-height: 1;
+  }
+
+  .question-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--gray-text);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 8px;
+    display: block;
+  }
+
+  .question-textarea {
+    width: 100%;
+    min-height: 140px;
+    padding: 14px 16px;
+    font-family: 'Open Sans', sans-serif;
+    font-size: 14px;
+    color: var(--navy);
+    background: var(--cream);
+    border: 2px solid var(--gray-light);
+    border-radius: 8px;
+    resize: vertical;
+    line-height: 1.6;
+    transition: border-color 0.2s;
+    outline: none;
+  }
+
+  .question-textarea:focus { border-color: var(--gold); background: var(--white); }
+  .question-textarea::placeholder { color: var(--gray-mid); }
+
+  .submit-btn {
+    width: 100%;
+    margin-top: 20px;
+    padding: 14px 24px;
+    background: var(--navy);
+    color: var(--gold-light);
+    font-family: 'Open Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    letter-spacing: 0.03em;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .submit-btn::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 3px;
+    background: var(--gold);
+  }
+
+  .submit-btn:hover { background: var(--navy-light); transform: translateY(-1px); box-shadow: 0 4px 16px rgba(42,80,142,0.2); }
+  .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+
+  .btn-spinner {
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(249,195,64,0.3);
+    border-top-color: var(--gold-light);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    display: none;
+  }
+
+  .submit-btn.loading .btn-spinner { display: block; }
+  .submit-btn.loading .btn-text { opacity: 0.7; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .disclaimer {
+    margin-top: 14px;
+    padding: 10px 14px;
+    background: var(--gray-light);
+    border-radius: 6px;
+    border-left: 3px solid var(--gold);
+    font-size: 11px;
+    color: var(--gray-text);
+    line-height: 1.6;
+  }
+
+  .disclaimer strong { color: var(--navy); }
+
+  .response-area {
+    display: none;
+    padding: 0 28px 28px;
+    animation: fadeUp 0.3s ease;
+  }
+
+  .response-area.show { display: block; }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .response-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+
+  .response-title {
+    font-family: 'Raleway', sans-serif;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--navy);
+  }
+
+  .status-badge {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 20px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .status-badge.protected { background: #d4edda; color: var(--green-ok); border: 1px solid #a8d5b5; }
+  .status-badge.review { background: #fff3cd; color: #856404; border: 1px solid #ffc107; }
+  .status-badge.at-risk { background: #f8d7da; color: var(--red-alert); border: 1px solid #f5c6cb; }
+
+  .response-body {
+    background: var(--cream);
+    border: 1px solid var(--gray-light);
+    border-radius: 10px;
+    padding: 20px;
+    font-size: 14px;
+    line-height: 1.75;
+    color: var(--navy);
+  }
+
+  /* Added specifically to style the blue links from Marked.js */
+  .response-body a {
+    color: var(--navy);
+    font-weight: 700;
+    text-decoration: underline;
+    text-decoration-color: var(--gold);
+  }
+
+  .response-body h3 {
+    font-family: 'Raleway', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--navy);
+    margin: 16px 0 6px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid var(--gray-light);
+  }
+
+  .response-body h3:first-child { margin-top: 0; }
+
+  .statute-ref {
+    display: inline-block;
+    background: var(--navy);
+    color: var(--gold-light);
+    font-size: 11px;
+    font-weight: 600;
+    padding: 1px 7px;
+    border-radius: 4px;
+    margin: 1px 2px;
+    letter-spacing: 0.04em;
+    text-decoration: none !important;
+  }
+
+  .response-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+    flex-wrap: wrap;
+  }
+
+  .action-btn {
+    padding: 8px 16px;
+    font-family: 'Open Sans', sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .action-btn.primary { background: var(--navy); color: var(--gold-light); border: none; }
+  .action-btn.secondary { background: transparent; color: var(--navy); border: 1.5px solid var(--gray-mid); }
+  .action-btn:hover { opacity: 0.8; }
+
+  @media (max-width: 600px) {
+    .tab-content { padding: 20px; }
+    .response-area { padding: 0 20px 20px; }
+  }
+  
+  .vada-contact-card {
+    margin-top: 16px;
+    padding: 16px;
+    background: var(--white);
+    border: 1.5px solid var(--navy);
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .contact-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--navy);
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--gold-light);
+    padding-bottom: 4px;
+    margin-bottom: 4px;
+  }
+
+  .contact-person {
+    font-size: 14px;
+    line-height: 1.4;
+  }
+
+  .contact-person strong { color: var(--navy); }
+  .contact-person a { color: var(--navy); text-decoration: none; border-bottom: 1px solid var(--gold); }
+.statute-refs-block {
+  margin-top: 20px;
+  padding: 14px 18px;
+  background: var(--gold-pale);
+  border: 1px solid var(--gold);
+  border-radius: 8px;
+}
+.refs-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--navy);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 10px;
+  border-bottom: 1px solid rgba(42, 80, 142, 0.1);
+  padding-bottom: 4px;
+}
+.refs-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.refs-links a {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--navy);
+  text-decoration: underline;
+  text-decoration-color: var(--gold);
+}
+.refs-links a:hover {
+  color: var(--navy-light);
+}
+.statute-refs-block {
+  margin-top: 20px;
+  padding: 14px 18px;
+  background: var(--gold-pale);
+  border: 1px solid var(--gold);
+  border-radius: 8px;
+}
+.refs-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--navy);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 10px;
+  border-bottom: 1px solid rgba(42, 80, 142, 0.1);
+  padding-bottom: 4px;
+}
+.refs-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.refs-links a {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--navy);
+  text-decoration: underline;
+  text-decoration-color: var(--gold);
+}
+</style>
+
+</head>
+<body>
+
+<div class="tool-panel">
+  <div class="panel-tabs">
+    <button class="tab-btn active" onclick="switchTab('upload', this)">
+      📄 Upload a Document
+    </button>
+    <button class="tab-btn" onclick="switchTab('question', this)">
+      💬 Ask a Question
+    </button>
+  </div>
+
+  <div class="tab-content active" id="tab-upload">
+    <div class="upload-zone" id="uploadZone">
+     <input type="file" id="fileInput" accept=".txt, .pdf" onchange="handleFileSelect(this)">
+<span class="upload-icon">📂</span>
+<div class="upload-title">Drop your document here</div>
+<p class="upload-sub">
+  Upload a .pdf or .txt file containing an OEM chargeback letter, audit notice, or manufacturer correspondence.
+  We'll check it against Virginia franchise law automatically.
+</p>
+<div class="file-types">
+  <span class="file-tag">PDF</span>
+  <span class="file-tag">TXT</span>
+</div>
+    </div>
+
+    <div class="file-selected" id="fileSelected">
+      <span>📄</span>
+      <span class="file-selected-name" id="fileSelectedName"></span>
+      <button class="remove-file" onclick="removeFile()">✕</button>
+    </div>
+
+    <textarea class="question-textarea" id="uploadContext" placeholder="Optional: Add context about your situation or what you'd like to know..." style="margin-top:16px; min-height:90px;"></textarea>
+
+    <button class="submit-btn" id="uploadBtn" onclick="analyzeDocument()">
+      <div class="btn-spinner"></div>
+      <span class="btn-text">⚖️ &nbsp; Analyze Against Virginia Law</span>
+    </button>
+
+    <div class="disclaimer">
+      <strong>Important:</strong> VADAi provides legal awareness based on the VADA Law Book. It is not a substitute for legal advice. 
+      For specific assistance with manufacturer disputes, please contact the VADA legal team listed in your analysis results.
+    </div>
+  </div>
+
+  <div class="tab-content" id="tab-question">
+    <label class="question-label" for="questionInput">Your Question</label>
+    <textarea
+      class="question-textarea"
+      id="questionInput"
+      placeholder="e.g. Can an OEM require me to purchase specific equipment as a condition of receiving vehicle allocations? What does Virginia law say about chargeback dispute timelines?"
+    ></textarea>
+
+    <button class="submit-btn" id="questionBtn" onclick="askQuestion()">
+      <div class="btn-spinner"></div>
+      <span class="btn-text">⚖️ &nbsp; Check Virginia Franchise Law</span>
+    </button>
+
+    <div class="disclaimer">
+      <strong>Important:</strong> VADAi provides legal awareness based on the VADA Law Book. It is not a substitute for legal advice. 
+      For specific assistance with manufacturer disputes, please contact the VADA legal team listed in your analysis results.
+    </div>
+  </div>
+
+  <div class="response-area" id="responseArea">
+    <div class="response-header">
+      <div class="response-title">⚖️ Analysis Result</div>
+      <span class="status-badge review" id="statusBadge">Analysis Complete</span>
+    </div>
+    <div class="response-body" id="responseBody"></div>
+    <div class="response-actions">
+      <button class="action-btn primary" onclick="printResponse()">🖨️ Print / Save PDF</button>
+      <button class="action-btn secondary" onclick="copyResponse()">📋 Copy Text</button>
+      <button class="action-btn secondary" onclick="clearResponse()">✕ Clear</button>
+    </div>
+
+    <div id="phase2-container" style="display: none; margin-top: 24px; border-top: 2px solid var(--gray-light); padding-top: 20px;">
+      <div style="font-family: 'Raleway', sans-serif; font-size: 15px; font-weight: 600; color: var(--navy); margin-bottom: 12px;">
+        🔄 Follow-up Action
+      </div>
+      
+      <div style="display: flex; gap: 10px; margin-bottom: 12px;">
+        <button id="toggle-draft" onclick="setMode('draft')" class="action-btn" style="background: var(--navy); color: var(--gold-light); flex: 1; justify-content: center; padding: 10px; font-size: 13px;">
+          📝 Draft Document (No DB)
+        </button>
+        <button id="toggle-research" onclick="setMode('research')" class="action-btn" style="background: var(--gray-light); color: var(--navy); border: 1px solid var(--gray-mid); flex: 1; justify-content: center; padding: 10px; font-size: 13px;">
+          🔍 Deep Dive (Search DB)
+        </button>
+      </div>
+
+      <textarea class="question-textarea" id="phase2-query" style="min-height: 80px; margin-bottom: 12px;" placeholder="E.g., Draft a letter to the manufacturer based on these laws..."></textarea>
+      
+      <button class="submit-btn" id="phase2Btn" onclick="executePhase2()" style="margin-top: 0; padding: 12px;">
+        <div class="btn-spinner"></div>
+        <span class="btn-text">Execute Follow-up</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+// UI & TAB LOGIC
+  let currentPhase1Answer = ""; 
+  let phase2Mode = "draft"; // Default to drafting
+
+  function switchTab(tab, btn) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + tab).classList.add('active');
+    clearResponse();
+  }
+
+  function handleFileSelect(input) {
+    if (input.files.length > 0) {
+      document.getElementById('fileSelectedName').textContent = input.files[0].name;
+      document.getElementById('fileSelected').classList.add('show');
+    }
+  }
+
+  function removeFile() {
+    document.getElementById('fileInput').value = '';
+    document.getElementById('fileSelected').classList.remove('show');
+  }
+
+  // REUSABLE FORMATTING FUNCTION (V3 - THE BULLETPROOF VERSION)
+function formatStatutes(text) {
+  if (!text) return "";
+
+  // 1. Parse markdown (bolding, lists, etc.)
+  let html = marked.parse(text);
+
+  // 2. Extract statutes & replace with unlinked badges
+  const codes = [];
+  html = html.replace(/\[?(§\s*)(46\.2-[\d.]+)\]?\([^)]*\)|(§\s*)(46\.2-[\d.]+)/g, 
+    (match, s1, c1, s2, c2) => {
+      const code = (c1 || c2).replace(/\.$/, '');
+      const symbol = s1 || s2;
+      if (!codes.includes(code)) codes.push(code);
+      return `<span class="statute-ref">${symbol}${code}</span>`;
+    });
+
+  // 3. Build the reference card at the bottom
+  if (codes.length > 0) {
+    const refs = codes
+      .sort()
+      .map(code => `<a href="https://law.lis.virginia.gov/vacode/${code}/" target="_blank">§ ${code}</a>`)
+      .join(''); // Gap is handled by CSS flex gap
+
+    html += `
+      <div class="statute-refs-block">
+        <div class="refs-title">📎 Official LIS References</div>
+        <div class="refs-links">${refs}</div>
+      </div>`;
+  }
+  return html;
+}
+// NEW: PDF Extraction Tool
+async function extractTextFromPDF(file) {
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  let fullText = '';
+  
+  // Loop through every page and scrape the text
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const textContent = await page.getTextContent();
+    const pageText = textContent.items.map(item => item.str).join(' ');
+    fullText += pageText + '\n';
+  }
+  return fullText;
+}
+// API CALL TO CLOUDFLARE WORKER
+async function callClaude(payload) {  
+  const WORKER_URL = 'https://vadalawbook.christopher-50f.workers.dev';  
+  try {    
+    const response = await fetch(WORKER_URL, {      
+      method: "POST",      
+      headers: { "Content-Type": "application/json" },      
+      body: JSON.stringify(payload)    
+    });    
+    if (!response.ok) throw new Error(`Status ${response.status}`);    
+    const data = await response.json();    
+    return data.content?.[0]?.text || data.text || "No response text found.";  
+  } catch (err) {    
+    console.error("Worker connection failed:", err);    
+    throw err;  
+  }
+}
+// INITIAL ANALYSIS TRIGGER FUNCTIONS
+  async function analyzeDocument() {
+    const fileInput = document.getElementById('fileInput');
+    const context = document.getElementById('uploadContext').value.trim();
+    if (!fileInput.files.length && !context) return alert('Please upload a file or add context.');
+
+    if (fileInput.files.length) {
+        const fileText = await fileInput.files[0].text();
+        userMessage = `Analyze this document: "${fileText}". Context: ${context}`;
+      }
+
+    const btn = document.getElementById('uploadBtn');
+    setLoading(btn, true);
+
+    try {
+      let userMessage = "";
+      if (fileInput.files.length) {
+        const fileText = await fileInput.files[0].text();
+        userMessage = `Analyze this document: "${fileText}". Context: ${context}`;
+      } else {
+        userMessage = `Context: ${context}. What Virginia franchise law protections apply?`;
+      }
+      
+      const payload = { type: 'initial', messages: [{ role: "user", content: userMessage }] };
+      const result = await callClaude(payload);
+      showResponse(result);
+    } catch (err) {
+      showResponse('Error: ' + err.message);
+    } finally {
+      setLoading(btn, false);
+    }
+  }
+
+  async function askQuestion() {
+    const question = document.getElementById('questionInput').value.trim();
+    if (!question) return alert('Please enter a question.');
+    const btn = document.getElementById('questionBtn');
+    setLoading(btn, true);
+    
+    try {
+      const payload = { type: 'initial', messages: [{ role: "user", content: question }] };
+      const result = await callClaude(payload);
+      showResponse(result);
+    } catch (err) {
+      showResponse('Error: ' + err.message);
+    } finally {
+      setLoading(btn, false);
+    }
+  }
+
+// THE MASTER RESPONSE HANDLER
+  function showResponse(text) {
+    currentPhase1Answer = text;
+    
+    const area = document.getElementById('responseArea');
+    const body = document.getElementById('responseBody');
+    const badge = document.getElementById('statusBadge');
+
+    let formatted = formatStatutes(text);
+
+    const contactInfo = `
+      <div class="vada-contact-card">
+        <div class="contact-title">Direct VADA Legal Support</div>
+        <div class="contact-person">
+          <strong>Anne Gambardella, Esq.</strong><br>
+          General Counsel & EVP<br>
+          📞 <a href="tel:8045453006">804.545.3006</a> | ✉️ <a href="mailto:agambardella@vada.com">agambardella@vada.com</a>
+        </div>
+        <div class="contact-person" style="margin-top: 10px; border-top: 1px solid var(--gray-light); padding-top: 10px;">
+          <strong>Mimi Perka, Esq.</strong><br>
+          Director of Legislative and Legal Affairs<br>
+          📞 <a href="tel:8045453028">804.545.3028</a> | ✉️ <a href="mailto:mperka@vada.com">mperka@vada.com</a>
+        </div>
+      </div>`;
+
+    body.innerHTML = formatted + contactInfo;
+    
+    const lower = text.toLowerCase();
+    const refusalPhrases = ["not currently in", "does not contain", "no highly specific", "not appear to restrict"];
+    const isRefusal = refusalPhrases.some(phrase => lower.includes(phrase));
+
+    if (!isRefusal && (lower.includes('protected') || lower.includes('violation') || lower.includes('rights under'))) {
+      badge.textContent = '✓ Protections Found';
+      badge.className = 'status-badge protected';
+    } else {
+      badge.textContent = '⚠ Contact VADA Team';
+      badge.className = 'status-badge review';
+    }
+
+    document.getElementById('phase2-container').style.display = 'block';
+    document.getElementById('phase2-query').value = '';
+
+    area.classList.add('show');
+    area.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+// PHASE 2 LOGIC
+  function setMode(mode) {
+    phase2Mode = mode;
+    const draftBtn = document.getElementById("toggle-draft");
+    const researchBtn = document.getElementById("toggle-research");
+    const input = document.getElementById("phase2-query");
+
+    if (mode === 'draft') {
+      draftBtn.style.background = "var(--navy)"; 
+      draftBtn.style.color = "var(--gold-light)";
+      draftBtn.style.border = "none";
+      
+      researchBtn.style.background = "var(--gray-light)"; 
+      researchBtn.style.color = "var(--navy)";
+      researchBtn.style.border = "1px solid var(--gray-mid)";
+      
+      input.placeholder = "E.g., Draft a letter to the manufacturer based on these laws...";
+    } else {
+      draftBtn.style.background = "var(--gray-light)"; 
+      draftBtn.style.color = "var(--navy)";
+      draftBtn.style.border = "1px solid var(--gray-mid)";
+      
+      researchBtn.style.background = "var(--navy)"; 
+      researchBtn.style.color = "var(--gold-light)";
+      researchBtn.style.border = "none";
+      
+      input.placeholder = "E.g., What if this involved an out-of-state transfer?";
+    }
+  }
+
+  async function executePhase2() {
+    const query = document.getElementById("phase2-query").value.trim();
+    if (!query) return alert("Please enter a follow-up request.");
+    
+    const btn = document.getElementById("phase2Btn");
+    const body = document.getElementById("responseBody");
+    
+    setLoadingPhase2(btn, true);
+    
+    const tempId = "loading-" + Date.now();
+    body.innerHTML += `<div id="${tempId}" style="margin-top:20px; color:var(--gray-text); font-style: italic;">Generating follow-up response...</div>`;
+
+    try {
+      const payload = {
+        type: "phase2",
+        mode: phase2Mode,
+        query: query,
+        previousAnswer: currentPhase1Answer
+      };
+      
+      const result = await callClaude(payload);
+      
+      document.getElementById(tempId).remove();
+      
+      const formatMode = phase2Mode === 'draft' ? "📝 DRAFTED DOCUMENT" : "🔍 DEEP DIVE RESEARCH";
+      
+      let formatted = formatStatutes(result);
+
+      body.innerHTML += `<div style="margin-top:28px; padding-top:20px; border-top:2px dashed var(--gray-mid);">
+        <div style="font-family:'Raleway',sans-serif; font-size:14px; font-weight:700; color:var(--navy); margin-bottom:12px;">${formatMode}</div>
+        ${formatted}
+      </div>`;
+      
+      body.lastElementChild.scrollIntoView({ behavior: 'smooth', block: 'end' });
+      document.getElementById("phase2-query").value = '';
+      
+    } catch (err) {
+      const el = document.getElementById(tempId);
+      if (el) {
+        el.style.color = 'var(--red-alert)';
+        el.style.fontWeight = '600';
+        el.style.fontStyle = 'normal';
+        el.textContent = 'Error: ' + err.message;
+      }
+    } finally {
+      setLoadingPhase2(btn, false);
+    }
+  }
+
+// UTILITIES
+  function setLoading(btn, loading) {
+    btn.disabled = loading;
+    btn.classList.toggle('loading', loading);
+    const btnText = btn.querySelector('.btn-text');
+    btnText.innerHTML = loading ? 'Analyzing Law Book...' : (btn.id === 'uploadBtn' ? '⚖️ &nbsp; Analyze Against Virginia Law' : '⚖️ &nbsp; Check Virginia Franchise Law');
+  }
+
+  function setLoadingPhase2(btn, loading) {
+    btn.disabled = loading;
+    btn.classList.toggle('loading', loading);
+    const btnText = btn.querySelector('.btn-text');
+    btnText.innerHTML = loading ? 'Processing...' : 'Execute Follow-up';
+  }
+
+  function clearResponse() { document.getElementById('responseArea').classList.remove('show'); }
+  function printResponse() { window.print(); }
+  function copyResponse() {
+    navigator.clipboard.writeText(document.getElementById('responseBody').innerText).then(() => alert('Copied to clipboard.'));
+  }
+</script>
+
+<footer style="text-align: center; padding: 20px; font-size: 0.8rem; color: var(--gray-text); opacity: 0.8;">
+    Powered by Plainspeak v1.2
+</footer>
+
+</body>
+</html>
