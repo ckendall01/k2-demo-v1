@@ -64,20 +64,22 @@ async function processLaws() {
         try {
           const embedding = await generateEmbedding(textToEmbed);
           const metadataBase = {
-            category: law.category, // NEW
+            category: law.category,
             code_section: law.section,
             lis_link: law.lisUrl || ''
           };
 
           if (law.text.length > 6000) {
             const parts = [law.text.substring(0, 6000), law.text.substring(6000, 12000)];
-            parts.forEach((p, i) => {
+            for (let i = 0; i < parts.length; i++) {
+              if (!parts[i]) continue;
+              const partEmbedding = await generateEmbedding(parts[i]);
               vectorsToUpsert.push({
-                id: `${vectorIdBase}-pt${i+1}`,
-                values: embedding,
-                metadata: { ...metadataBase, subject: `${law.subject} (Part ${i+1})`, text: p }
+                id: `${vectorIdBase}-pt${i + 1}`,
+                values: partEmbedding,
+                metadata: { ...metadataBase, subject: `${law.subject} (Part ${i + 1})`, text: parts[i] }
               });
-            });
+            }
           } else {
             vectorsToUpsert.push({
               id: vectorIdBase,
@@ -85,16 +87,21 @@ async function processLaws() {
               metadata: { ...metadataBase, subject: law.subject, text: law.text }
             });
           }
-        } catch (error) { console.error(`❌ Error § ${law.section}:`, error.message); }
 
-        if (vectorsToUpsert.length >= 10) {
-          await upsertIntoVectorize(vectorsToUpsert);
-          vectorsToUpsert.length = 0; 
-          await new Promise(r => setTimeout(r, 800)); 
+          // Batch flush — outside both branches
+          if (vectorsToUpsert.length >= 10) {
+            await upsertIntoVectorize(vectorsToUpsert);
+            vectorsToUpsert.splice(0);
+            await new Promise(r => setTimeout(r, 800));
+          }
+
+        } catch (error) {
+          console.error(`❌ Error § ${law.section}:`, error.message);
         }
-      }
+      } // end for loop
+
       if (vectorsToUpsert.length > 0) await upsertIntoVectorize(vectorsToUpsert);
       console.log('🎉 v1.2 Knowledge Base Update Complete.');
-    });
+    }); // end .on('end')
 }
 processLaws();

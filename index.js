@@ -26,7 +26,31 @@ async function handlePhase1(payload, env, request) {
   const messages = payload.messages || [];
   const userMessage = messages[messages.length - 1].content;
 
-  const embeddingResponse = await env.AI.run('@cf/baai/bge-large-en-v1.5', { text: [userMessage] });
+  // 1. THE TRANSLATOR: Extract the core intent to build a "Smart Search" query
+  // We take just the first 1000 characters (the user's typed question) to ignore the massive PDF text below it
+  const baseQuestion = userMessage.substring(0, 1000);
+
+  const expanderResponse = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': env.ANTHROPIC_API_KEY,
+      'anthropic-version': '2023-06-01'
+    },
+    body: JSON.stringify({
+      model: 'claude-haiku-4-5-20251001', // Haiku is blazing fast for this 1-second translation task
+      max_tokens: 60,
+      system: "You are a legal search assistant. Read the user's prompt and extract 3 to 5 highly specific search terms or concepts related to motor vehicle franchise law that should be looked up. Return ONLY a comma-separated list of keywords. Example: If they mention 'Warranty Policy', output 'Warranty reimbursement, retail labor rate markup, parts markup, chargebacks'.",
+      messages: [{ role: 'user', content: baseQuestion }]
+    })
+  });
+
+  const expanderData = await expanderResponse.json();
+  const smartSearchQuery = expanderData?.content?.[0]?.text || baseQuestion;
+  console.log("Smart Search Query generated:", smartSearchQuery);
+
+  // 2. THE LIBRARIAN: Use the Smart Search Query to find the right laws
+  const embeddingResponse = await env.AI.run('@cf/baai/bge-large-en-v1.5', { text: [smartSearchQuery] });
   const queryVector = embeddingResponse.data[0];
 
   const matches = await env.VECTORIZE.query(queryVector, { topK: 8, returnMetadata: true });
@@ -41,6 +65,7 @@ async function handlePhase1(payload, env, request) {
     })
     .join('\n\n---\n\n');
 
+  // 3. THE LAWYER: Read the FULL PDF and analyze against the specific laws found
   const systemPrompt = `You are VADAi, a strict legal awareness assistant for VADA. 
   RULES:
   1. ONLY use the "LAW BOOK CONTEXT" provided below.
@@ -62,9 +87,9 @@ async function handlePhase1(payload, env, request) {
     },
     body: JSON.stringify({
       model: 'claude-sonnet-4-20250514', 
-      max_tokens: 1200,
+      max_tokens: 6000, // Boosted slightly so it has room to analyze the full 193 pages
       system: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
-      messages: messages
+      messages: messages // This passes the full 193-page PDF to Claude
     })
   });
 
@@ -120,7 +145,7 @@ async function handlePhase2(payload, env, request) {
     },
     body: JSON.stringify({
       model: 'claude-sonnet-4-20250514',
-      max_tokens: 1500,
+      max_tokens: 6000,
       system: systemPrompt,
       messages: messages
     })
